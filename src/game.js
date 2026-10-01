@@ -39,11 +39,22 @@ const TIERS = [
   { c: '#f4f4f4', d: '#a8a8b8', l: '#ffffff' },
   { c: '#2b2b3a', d: '#111118', l: '#ffd257' },
 ];
-const DMG = t => Math.pow(12, t - 1);
+// ---------- balance knobs (tuned with __rat.sim) ----------
+// Sim results (bot keeps 20 per tier, no clicks): ~3–7 min per floor through floor 8,
+// top tier rising about one step per floor.
+const BAL = {
+  dmgGrow: 20,      // damage per tier: DMG(t) = dmgGrow^(t-1) → a 10:1 promotion doubles raw damage
+  wallHP: 30,       // floor-1 wall HP (±25%)
+  stairHP: 110,     // floor-1 stair wall HP
+  floorGrow: 3,     // wall / box / explosion multiplier per floor
+  budRate: 0.015,   // solo budding chance per second, per tier (scaled by crowding)
+};
+const DMG = t => Math.pow(BAL.dmgGrow, t - 1);
+const crowd = n => 1 / (1 + n / 25);
 // Breeding chance per collision: drops as the population grows, rises with the tiers involved.
 //   crowd: 3 circles ≈ 89%, 25 ≈ 50%, 100 ≈ 20%, 300 ≈ 8%
 //   tier : +60% per tier above 1, for each of the two circles
-const breedChance = (ta, tb, n) => Math.min(0.95, 0.6 * (1 / (1 + n / 25)) * (1 + 0.6 * (ta - 1 + tb - 1)));
+const breedChance = (ta, tb, n) => Math.min(0.95, 0.6 * crowd(n) * (1 + 0.6 * (ta - 1 + tb - 1)));
 const RADIUS = t => 5 + (t - 1) * 2.6;
 // Newborn tier: higher floors give a chance to be born above T1 (rolls upward, capped by floor number).
 //   floor 1: always T1 · floor 2: 12% T2 · floor 3: 24% T2, ~6% T3 · ...
@@ -54,7 +65,7 @@ function babyTier() {
   while (t < cap && Math.random() < upChance(floorN)) t++;
   return t;
 }
-const fmt = n => n >= 1e6 ? (n / 1e6).toFixed(n >= 1e7 ? 0 : 1) + 'M' : n >= 1e3 ? (n / 1e3).toFixed(n >= 1e4 ? 0 : 1) + 'k' : String(Math.round(n));
+const fmt = n => n >= 1e9 ? (n / 1e9).toFixed(n >= 1e10 ? 0 : 1) + 'B' : n >= 1e6 ? (n / 1e6).toFixed(n >= 1e7 ? 0 : 1) + 'M' : n >= 1e3 ? (n / 1e3).toFixed(n >= 1e4 ? 0 : 1) + 'k' : String(Math.round(n));
 
 const rand = (a, b) => a + Math.random() * (b - a);
 const randi = (a, b) => Math.floor(rand(a, b + 1));
@@ -71,7 +82,7 @@ let boxTimer = 0, autoTimer = 0;
 let rally = null;          // { x, y, life, max } — click-to-rally target
 const RALLY_TIME = 3;
 const cam = { x: 0, y: 0, z: 1, auto: true };
-const scale = () => Math.pow(3, floorN - 1);
+const scale = () => Math.pow(BAL.floorGrow, floorN - 1);
 
 // ---------- projection ----------
 const PX = (x, y) => x - y;
@@ -116,7 +127,7 @@ function genFloor() {
   const fs = scale();
   for (const s of segs) {
     s.stair = s.a === stairRoom || s.b === stairRoom;
-    s.max = s.hp = Math.round((s.stair ? 380 : rand(80, 130)) * fs);
+    s.max = s.hp = Math.round((s.stair ? BAL.stairHP : BAL.wallHP * rand(0.75, 1.25)) * fs);
   }
   visDirty = true;
   reveal(startRoom, true);
@@ -362,8 +373,16 @@ function step(dt) {
   T += dt;
   if (rally && (rally.life -= dt) <= 0) rally = null;
   // ---- circles: rat-like dash AI ----
+  const buds = [];
   for (const c of circles) {
     c.breed -= dt; c.hitCd -= dt; c.wallCd -= dt; c.t -= dt;
+    // solo budding: keeps tiny populations alive, and higher tiers bud more often
+    if (c.breed <= 0 && circles.length + buds.length < CAP && Math.random() < BAL.budRate * c.tier * crowd(circles.length) * dt) {
+      const bt = babyTier(), baby = newCircle(bt, c.x + rand(-3, 3), c.y + rand(-3, 3));
+      baby.breed = rand(4, 6); buds.push(baby);
+      c.breed = rand(3.5, 5.5);
+      for (let k = 0; k < 5; k++) addPart(c.x, c.y, 6, rand(-50, 50), rand(-50, 50), rand(60, 140), '#ffb3d9', 0.45, 2, 0.8);
+    }
     if (c.t <= 0) {
       if (c.state === 'dash') { c.state = 'rest'; c.t = rally ? rand(0.08, 0.25) : rand(0.3, 0.9); }
       else {
@@ -393,6 +412,8 @@ function step(dt) {
     if (sp2 > 600 * 600) { const k = 600 / Math.sqrt(sp2); c.vx *= k; c.vy *= k; }
     c.x += c.vx * dt; c.y += c.vy * dt;
   }
+
+  for (const b of buds) circles.push(b);
 
   // ---- spatial hash ----
   grid.clear();
@@ -540,7 +561,11 @@ function step(dt) {
     autoTimer -= dt;
     if (autoTimer <= 0) {
       autoTimer = 0.4;
-      for (let t = 1; t < MAX_TIER; t++) if (promote(t)) break;
+      // keep a breeding reserve of 20 per tier (promoting ASAP starves breeding);
+      // near the population cap, promote anything with 10+ to free space
+      const cnt = new Array(MAX_TIER + 1).fill(0); for (const c of circles) cnt[c.tier]++;
+      const need = circles.length >= CAP * 0.9 ? 10 : 30;
+      for (let t = 1; t < MAX_TIER; t++) if (cnt[t] >= need && promote(t)) break;
     }
   }
 
@@ -1133,5 +1158,32 @@ function frame(now) {
 requestAnimationFrame(frame);
 
 // debug hook
-window.__rat = { cam, setFloor(n) { floorN = n; }, get circles() { return circles; }, get boxes() { return boxes; }, get segs() { return segs; }, promote, nextFloor, step };
+window.__rat = {
+  cam, BAL, setFloor(n) { floorN = n; }, get floor() { return floorN; }, get trans() { return trans; },
+  get circles() { return circles; }, get boxes() { return boxes; }, get segs() { return segs; },
+  setAuto(v) { autoPromote = v; }, promote, nextFloor, step, updateTrans, newGame,
+  // headless balance sim: auto-promote, no clicks; returns seconds spent on each floor
+  //   keep: how many circles of a tier the bot keeps before promoting (0 = promote ASAP)
+  sim(floors = 5, limit = 900, keep = 0, bal = {}) {
+    Object.assign(BAL, bal);
+    newGame(); autoPromote = false; const out = [];
+    let pt = 0;
+    for (let f = 0; f < floors; f++) {
+      const start = T, f0 = floorN;
+      while (floorN === f0 && T - start < limit) {
+        step(1 / 60);
+        if ((pt += 1 / 60) > 0.4) {
+          pt = 0;
+          const cnt = new Array(MAX_TIER + 1).fill(0); for (const c of circles) cnt[c.tier]++;
+          for (let t = 1; t < MAX_TIER; t++) if (cnt[t] >= 10 + keep && circles.length >= 14) { promote(t); break; }
+        }
+        if (trans) { trans.t = 0.8; updateTrans(0); trans = null; }
+      }
+      const tiers = {}; for (const c of circles) tiers[c.tier] = (tiers[c.tier] || 0) + 1;
+      out.push({ floor: f0, sec: Math.round(T - start), n: circles.length, tiers: JSON.stringify(tiers) });
+      if (floorN === f0) break;
+    }
+    return out;
+  },
+};
 })();
