@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>RAT PROTO</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div id="hud">
+  <div class="stat"><span class="label">층</span><b id="hFloor">1</b></div>
+  <div class="stat"><span class="label">동그라미</span><b id="hCount">0</b><span class="sub" id="hCap">/300</span></div>
+  <div class="stat"><span class="label">번식 확률(T1)</span><b id="hBreed">0%</b></div>
+  <div class="stat"><span class="label">방</span><b id="hRooms">1</b><span class="sub" id="hRoomsTotal">/16</span></div>
+  <div class="stat stair" id="hStair">계단방: 미발견</div>
+</div>
+
+<div id="panel">
+  <div class="panel-title">승급 <span class="hint">10개 → 다음 단계 1개</span></div>
+  <div id="tiers"></div>
+  <div class="row info">상위 등급 탄생 <b id="hUp">0%</b><span class="hint">층당 +12%</span></div>
+  <label class="row"><input type="checkbox" id="autoPromote"> 자동 승급</label>
+  <div class="row btns">
+    <button data-speed="1" class="spd on">1x</button>
+    <button data-speed="2" class="spd">2x</button>
+    <button data-speed="4" class="spd">4x</button>
+    <button id="pauseBtn">일시정지</button>
+  </div>
+  <div class="row btns">
+    <button id="camBtn" class="on">카메라 자동</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+<div id="banner"></div>
+
+<div id="intro">
+  <div class="card">
+    <h1>RAT PROTO</h1>
+    <ul>
+      <li>동그라미들은 쥐처럼 사방으로 <b>랜덤 돌진</b>합니다.</li>
+      <li>동그라미끼리 부딪히면 <b>새끼가 태어납니다</b>.</li>
+      <li>같은 단계 <b>10개를 모아 승급</b>하면 더 크고 강해집니다.</li>
+      <li>네모의 체력을 다 깎으면 힘 받은 방향으로 <b>날아가</b> 착지하면서 <b>폭발</b>합니다. <span class="red">빨간 네모</span>는 폭발이 큽니다.</li>
+      <li>벽의 체력을 다 깎으면 <b>방이 열리며</b> 맵이 확장됩니다.</li>
+      <li><span class="gold">금색 벽</span>으로 둘러싸인 <b>계단방</b>을 찾아 벽을 부수면 다음 층으로!</li>
+    </ul>
+    <p class="small">클릭: 동그라미들이 그 지점으로 모여 돌진 · 드래그: 카메라 이동 · 휠/핀치: 확대·축소 · Space: 일시정지 · 1~9: 해당 단계 승급</p>
+    <button id="startBtn">시작</button>
+  </div>
+</div>
+
+<script src="game.js"></script>
+</body>
+</html>

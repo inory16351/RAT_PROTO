@@ -1,0 +1,96 @@
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; height: 100%; overflow: hidden;
+  background: #0d0f14; color: #e8ecf3;
+  font-family: system-ui, -apple-system, "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+  user-select: none; -webkit-user-select: none;
+}
+canvas#game { display: block; position: fixed; inset: 0; touch-action: none; cursor: grab; }
+canvas#game:active { cursor: grabbing; }
+
+#hud {
+  position: fixed; top: 12px; left: 12px; display: flex; flex-wrap: wrap; gap: 8px;
+  pointer-events: none; max-width: calc(100vw - 24px);
+}
+.stat {
+  background: rgba(20, 24, 33, .82); border: 1px solid rgba(255,255,255,.08);
+  padding: 6px 12px; border-radius: 10px; display: flex; align-items: baseline; gap: 6px;
+  backdrop-filter: blur(4px);
+}
+.stat .label { font-size: 12px; opacity: .65; }
+.stat b { font-size: 18px; font-variant-numeric: tabular-nums; }
+.stat .sub { font-size: 12px; opacity: .55; font-variant-numeric: tabular-nums; }
+.stat.stair { font-size: 13px; opacity: .8; }
+.stat.stair.found { color: #ffd257; border-color: rgba(255,210,87,.5); opacity: 1; }
+
+#panel {
+  position: fixed; top: 12px; right: 12px; width: 220px;
+  background: rgba(20, 24, 33, .88); border: 1px solid rgba(255,255,255,.08);
+  border-radius: 12px; padding: 10px; backdrop-filter: blur(4px);
+}
+.panel-title { font-weight: 700; font-size: 14px; margin-bottom: 6px; }
+.panel-title .hint { font-weight: 400; font-size: 11px; opacity: .55; margin-left: 4px; }
+.tier {
+  display: grid; grid-template-columns: 14px 30px 1fr 56px; align-items: center; gap: 6px;
+  padding: 3px 0; font-size: 13px;
+}
+.tier .dot { width: 12px; height: 12px; border-radius: 50%; box-shadow: inset -2px -2px 0 rgba(0,0,0,.25); }
+.tier .cnt { font-variant-numeric: tabular-nums; }
+.tier .atk { font-size: 10px; opacity: .55; margin-left: 6px; }
+.row.info { font-size: 12px; opacity: .85; gap: 4px; }
+.row.info b { color: #ffd257; }
+.row.info .hint { font-size: 10px; opacity: .55; margin-left: auto; }
+.tier .bar { height: 3px; background: rgba(255,255,255,.08); border-radius: 2px; margin-top: 3px; overflow: hidden; }
+.tier .bar i { display: block; height: 100%; background: currentColor; }
+.row { display: flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 13px; }
+.btns button { flex: 1; }
+button {
+  font: inherit; font-size: 12px; color: #e8ecf3; background: #2a3140;
+  border: 1px solid rgba(255,255,255,.1); border-radius: 7px; padding: 5px 6px; cursor: pointer;
+}
+button:hover:not(:disabled) { background: #364056; }
+button:disabled { opacity: .35; cursor: default; }
+button.on { background: #3d6bd8; border-color: #5b86ef; }
+.tier button.ready { background: #2f8f4e; border-color: #4fc177; animation: pulse 1s infinite alternate; }
+@keyframes pulse { to { filter: brightness(1.25); } }
+
+#toast {
+  position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
+  display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none;
+}
+#toast div {
+  background: rgba(20,24,33,.92); border: 1px solid rgba(255,255,255,.1);
+  padding: 7px 14px; border-radius: 999px; font-size: 14px; animation: toastIn .25s ease-out;
+  transition: opacity .4s;
+}
+@keyframes toastIn { from { transform: translateY(10px); opacity: 0; } }
+
+#banner {
+  position: fixed; left: 0; right: 0; top: 38%; text-align: center; pointer-events: none;
+  font-size: 56px; font-weight: 900; letter-spacing: 2px; color: #ffd257;
+  text-shadow: 0 4px 0 #7a5a10, 0 0 30px rgba(255,200,60,.5); opacity: 0; transition: opacity .4s;
+}
+#banner.show { opacity: 1; }
+
+#intro {
+  position: fixed; inset: 0; display: grid; place-items: center;
+  background: rgba(8,10,14,.78); backdrop-filter: blur(3px); padding: 16px;
+}
+#intro .card {
+  max-width: 520px; width: 100%; background: #161b25; border: 1px solid rgba(255,255,255,.1);
+  border-radius: 16px; padding: 22px 24px;
+}
+#intro h1 { margin: 0 0 10px; font-size: 30px; letter-spacing: 3px; color: #9be15d; }
+#intro ul { padding-left: 18px; line-height: 1.7; margin: 0 0 12px; font-size: 14px; }
+#intro .small { font-size: 12px; opacity: .6; }
+#intro .gold { color: #ffd257; font-weight: 700; }
+#intro .red { color: #ff6b5b; font-weight: 700; }
+#startBtn { width: 100%; padding: 12px; font-size: 16px; font-weight: 700; background: #3d6bd8; border-color: #5b86ef; }
+
+@media (max-width: 640px) {
+  #panel { top: auto; bottom: 12px; right: 12px; left: 12px; width: auto; padding: 8px; }
+  #tiers { display: grid; grid-template-columns: 1fr 1fr; column-gap: 10px; }
+  .tier { grid-template-columns: 12px 26px 1fr 46px; font-size: 12px; }
+  #toast { bottom: auto; top: 64px; }
+  #banner { font-size: 40px; }
+}
